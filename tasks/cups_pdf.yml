@@ -1,0 +1,11 @@
+---
+
+- name: Install Cups PDF driver
+  become: yes
+  pacman:
+    name: cups-pdf
+    update_cache: yes
+    state: latest
+  notfiy: restart cups
+  tags:
+    - printer:cups:driver:pdf

@@ -1,0 +1,85 @@
+---
+
+# For driver search at
+#    http://download.ebz.epson.net/dsc/search/01/search/?OSC=LX
+- name: Download latest driver (v1.1.1 from 2020-04-23) for the Epson WF-C5710DWF printer
+  get_url:
+    url: https://download3.ebz.epson.net/dsc/f/03/00/11/01/98/db41c4ea478b3738ac283b8367e53fb09c0f7c8d/epson-inkjet-printer-escpr2_1.1.11-1lsb3.2_amd64.deb
+    dest: /tmp/epson_wf-c5710dwf.deb
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf
+
+- name: Create temp dir to extract driver contents
+  file:
+    state: directory
+    path: /tmp/epson_wf-c5710dwf/data
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf
+
+- name: Extract deb package of Epson printer driver
+  shell: ar -x --output /tmp/epson_wf-c5710dwf/ /tmp/epson_wf-c5710dwf.deb
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf
+
+- name: Extract data (ppd files) of Epson printer driver
+  shell: tar --directory=/tmp/epson_wf-c5710dwf/data --extract --gzip --file=/tmp/epson_wf-c5710dwf/data.tar.gz
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf
+
+- name: Remove old Epson driver files
+  become: yes
+  file:
+    state: absent
+    path: /opt/epson-inkjet-printer-escpr2
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf
+
+- name: Copy new Epson driver files
+  become: yes
+  copy:
+    src: /tmp/epson_wf-c5710dwf/data/opt/epson-inkjet-printer-escpr2
+    dest: /opt/
+    remote_src: yes
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf
+
+- name: Link ppd files for cups to use
+  become: yes
+  file:
+    state: link
+    src: /opt/epson-inkjet-printer-escpr2/ppds
+    dest: /usr/share/ppd/epson-inkjet-printer-escpr2
+  notify:
+    - restart cups
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf
+
+- name: Remove temporary files
+  file:
+    state: absent
+    path: '/tmp/{{ item }}'
+  with_items:
+    - epson_wf-c5710dwf
+    - epson_wf-c5710dwf.deb
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf
+
+- name: Check if printer already configured
+  shell: 2>&1 lpstat -p EPSON_WF-C5710DWF | grep ' EPSON_WF-C5710DWF '
+  ignore_errors: yes
+  register: lpstat_out
+  changed_when: "lpstat_out.rc != 0"
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf:config
+
+- name: Add Epson WF-C5710 Series printer config
+  when: lpstat_out.rc == 1 # The printer was not found
+  shell: lpadmin -p EPSON_WF-C5710DWF -E -v lpd://192.168.189.163:515/PASSTHRU -m lsb/usr/epson-inkjet-printer-escpr2/Epson/Epson-WF-C5710_Series-epson-inkjet-printer-escpr2.ppd.gz -L "Zuhause im Keller"
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf:config
+
+- name: Make the Epson WF-C5710 printer the default one
+  when: lpstat_out.rc == 1 # The printer was not found
+  shell: lpoptions -d EPSON_WF-C5710DWF
+  tags:
+    - printer:cups:driver:epson:wfc5710dwf:config

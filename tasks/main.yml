@@ -1,0 +1,35 @@
+---
+
+- name: Install Cups - Printing Server
+  become: yes
+  pacman:
+    name: cups
+    update_cache: yes
+    state: latest
+  tags:
+    - printer:cups
+
+- name: Install Cups general driver
+  become: yes
+  pacman:
+    name:
+      - ghostscript
+      - gsfonts
+    update_cache: yes
+    state: latest
+  tags:
+    - printer:cups:driver
+
+
+- name: Enable cups service
+  become: yes
+  systemd:
+    name: org.cups.cupsd.service
+    state: started
+    enabled: yes
+  tags:
+    - printer:cups
+    - systemd
+
+- import_tasks: cups_pdf.yml
+- import_tasks: epson_wf-c5710dwf.yml
