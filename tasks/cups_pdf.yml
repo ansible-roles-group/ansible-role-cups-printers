@@ -6,6 +6,6 @@
     name: cups-pdf
     update_cache: yes
     state: latest
-  notfiy: restart cups
+  notify: restart cups
   tags:
     - printer:cups:driver:pdf
